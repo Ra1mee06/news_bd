@@ -1,28 +1,59 @@
 package app.controller;
 
-import app.entity.News;
-import app.repository.NewsRepository;
+import app.dto.NewsDetailsResponse;
+import app.dto.NewsRequest;
+import app.dto.NewsResponse;
+import app.entity.User;
+import app.security.SecurityUtils;
+import app.service.NewsService;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/news")
+@RequestMapping("/api/news")
 public class NewsController {
 
-    private final NewsRepository newsRepository;
+    private final NewsService newsService;
+    private final SecurityUtils securityUtils;
 
-    public NewsController(NewsRepository newsRepository) {
-        this.newsRepository = newsRepository;
+    public NewsController(NewsService newsService, SecurityUtils securityUtils) {
+        this.newsService = newsService;
+        this.securityUtils = securityUtils;
     }
 
+    /**
+     * Список новостей с пагинацией (доступен без авторизации).
+     */
     @GetMapping
-    public List<News> getAll() {
-        return newsRepository.findAll();
+    public Page<NewsResponse> findAll(Pageable pageable) {
+        return newsService.findAll(pageable);
+    }
+
+    /**
+     * Просмотр новости с комментариями (доступен без авторизации).
+     */
+    @GetMapping("/{id}")
+    public NewsDetailsResponse findById(@PathVariable Long id) {
+        return newsService.findByIdWithComments(id);
     }
 
     @PostMapping
-    public News create(@RequestBody News news) {
-        return newsRepository.save(news);
+    public NewsResponse create(@Valid @RequestBody NewsRequest request) {
+        User currentUser = securityUtils.getCurrentUser();
+        return newsService.create(request, currentUser);
+    }
+
+    @PutMapping("/{id}")
+    public NewsResponse update(@PathVariable Long id, @Valid @RequestBody NewsRequest request) {
+        User currentUser = securityUtils.getCurrentUser();
+        return newsService.update(id, request, currentUser);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        User currentUser = securityUtils.getCurrentUser();
+        newsService.delete(id, currentUser);
     }
 }
